@@ -3,6 +3,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="../tests/tests.vcxproj" />
-  <Project Path="maestroquest.vcxproj" />
+  <Project Path="../tests/tests.vcxproj" Id="2806e2a2-46a5-43ce-ad65-d280fac70219" />
+  <Project Path="maestroquest.vcxproj" Id="dc53ece8-5941-45c4-8d62-df8449d78e2d" />
 </Solution>

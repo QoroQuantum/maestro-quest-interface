@@ -6,6 +6,9 @@
 #include <mutex>
 #include <unordered_map>
 #include <numeric>
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include "quest/include/quest.h"
 
 class MaestroQuest
@@ -158,11 +161,200 @@ public:
 		applyT(*qureg, qubit);
 	}
 
+	static void ApplyRx(void* sim, int qubit, double angle) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyRotateX(*qureg, qubit, angle);
+	}
+
+	static void ApplyRy(void* sim, int qubit, double angle) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyRotateY(*qureg, qubit, angle);
+	}
+
+	static void ApplyRz(void* sim, int qubit, double angle) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyRotateZ(*qureg, qubit, angle);
+	}
+
+	static void ApplyCS(void* sim, int control, int target) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledS(*qureg, control, target);
+	}
+
+	static void ApplyCT(void* sim, int control, int target) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledT(*qureg, control, target);
+	}
+
+	static void ApplyCH(void* sim, int control, int target) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledHadamard(*qureg, control, target);
+	}
+
+	static void ApplySwap(void* sim, int qubit1, int qubit2) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applySwap(*qureg, qubit1, qubit2);
+	}
+
+	static void ApplyCX(void* sim, int control, int target) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledPauliX(*qureg, control, target);
+	}
+
+	static void ApplyCY(void* sim, int control, int target) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledPauliY(*qureg, control, target);
+	}
+
+	static void ApplyCZ(void* sim, int control, int target) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledPauliZ(*qureg, control, target);
+	}
+
+	static void ApplyCRx(void* sim, int control, int target, double angle) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledRotateX(*qureg, control, target, angle);
+	}
+
+	static void ApplyCRy(void* sim, int control, int target, double angle) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledRotateY(*qureg, control, target, angle);
+	}
+
+	static void ApplyCRz(void* sim, int control, int target, double angle) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledRotateZ(*qureg, control, target, angle);
+	}
+
+	static void ApplyCSwap(void* sim, int control, int qubit1, int qubit2) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledSwap(*qureg, control, qubit1, qubit2);
+	}
+
+	static void ApplyCCX(void* sim, int control1, int control2, int target) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyMultiControlledPauliX(*qureg, {control1, control2}, target);
+	}
+
+	void ApplySdg(void* sim, int qubit) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyDiagMatr1(*qureg, qubit, sdgMat);
+	}
+
+	void ApplyTdg(void* sim, int qubit) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyDiagMatr1(*qureg, qubit, tdgMat);
+	}
+
+	void ApplySx(void* sim, int qubit) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyCompMatr1(*qureg, qubit, sxMat);
+	}
+
+	void ApplySxDg(void* sim, int qubit) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyCompMatr1(*qureg, qubit, sxdgMat);
+	}
+
+	void ApplyK(void* sim, int qubit) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyCompMatr1(*qureg, qubit, kMat);
+	}
+
+	void ApplyU(void* sim, int qubit, double theta, double phi, double lambda, double gamma) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+
+		const FLOAT_TYPE t2 = theta * 0.5;
+		const std::complex<FLOAT_TYPE> a = std::polar(1., gamma) * std::complex<FLOAT_TYPE>(cos(t2), 0.);
+		const std::complex<FLOAT_TYPE> b = -std::polar(1., gamma + lambda) * sin(t2);
+		const std::complex<FLOAT_TYPE> c = std::polar(1., gamma + phi) * sin(t2);
+		const std::complex<FLOAT_TYPE> d = std::polar(1., gamma + phi + lambda) * cos(t2);
+
+		CompMatr1 Umat = getInlineCompMatr1({ 
+			{a, b},
+			{c, d}
+			});
+		applyCompMatr1(*qureg, qubit, Umat);
+	}
+
+	void ApplyCP(void* sim, int control, int target, double angle) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+
+		DiagMatr1 pmat = getInlineDiagMatr1({ {1.,0.}, std::polar(1., angle) });
+
+		applyControlledDiagMatr1(*qureg, control, target, pmat);
+	}
+
+	void ApplyCSx(void* sim, int control, int target) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledCompMatr1(*qureg, control, target, sxMat);
+	}
+
+	void ApplyCSxDg(void* sim, int control, int target) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		applyControlledCompMatr1(*qureg, control, target, sxdgMat);
+	}
+
+	void ApplyCU(void* sim, int control, int target, double theta, double phi, double lambda, double gamma) {
+		if (!sim) return;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		const FLOAT_TYPE t2 = theta * 0.5;
+		const std::complex<FLOAT_TYPE> a = std::polar(1., gamma) * std::complex<FLOAT_TYPE>(cos(t2), 0.);
+		const std::complex<FLOAT_TYPE> b = -std::polar(1., gamma + lambda) * sin(t2);
+		const std::complex<FLOAT_TYPE> c = std::polar(1., gamma + phi) * sin(t2);
+		const std::complex<FLOAT_TYPE> d = std::polar(1., gamma + phi + lambda) * cos(t2);
+
+		CompMatr1 Umat = getInlineCompMatr1({
+			{a, b},
+			{c, d}
+			});
+		applyControlledCompMatr1(*qureg, control, target, Umat);
+	}
+
+	static int GetAmplitudes(void* sim, void* buffer, size_t bufSize) {
+		if (!sim || !buffer || bufSize == 0) return 0;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		const size_t numAmps = qureg->numAmps;
+		if (bufSize < numAmps * sizeof(qcomp)) return 0; // buffer too small
+
+		getQuregAmps(static_cast<qcomp*>(buffer), *qureg, 0, numAmps);
+		return 1;
+	}
 
 private:
 	unsigned long int curHandle = 0;
 	std::mutex simulatorsMutex;
 	std::unordered_map<unsigned long int, std::unique_ptr<Qureg>> simulators;
+
+	DiagMatr1 sdgMat = getInlineDiagMatr1({ 1, -1_i });
+	DiagMatr1 tdgMat = getInlineDiagMatr1({ std::complex<FLOAT_TYPE>(1.,0.), std::polar<FLOAT_TYPE>(1., -M_PI / 4.) });
+	CompMatr1 sxMat = getInlineCompMatr1({ {{0.5,0.5},{0.5,-0.5}}, {{0.5,-0.5},{0.5,0.5}} });
+	CompMatr1 sxdgMat = getInlineCompMatr1({ {{0.5,-0.5},{0.5,0.5}}, {{0.5,0.5},{0.5,-0.5}} });
+	CompMatr1 kMat = getInlineCompMatr1({ {{1. / sqrt(2.),0.},{0.,-1. / sqrt(2.)}}, {{0.,1. / sqrt(2.)},{-1. / sqrt(2.),0.}} });
 };
 
 #endif // _MAESTROQUEST_H_

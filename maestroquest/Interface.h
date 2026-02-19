@@ -109,6 +109,135 @@ extern "C" {
 #endif
 		void ApplyT(void* sim, int qubit);
 
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyRx(void* sim, int qubit, double angle);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+		#endif
+		void ApplyRy(void* sim, int qubit, double angle);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+		#endif
+		void ApplyRz(void* sim, int qubit, double angle);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCS(void* sim, int control, int target);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCT(void* sim, int control, int target);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCH(void* sim, int control, int target);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplySwap(void* sim, int qubit1, int qubit2);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCX(void* sim, int control, int target);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCY(void* sim, int control, int target);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCZ(void* sim, int control, int target);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCRx(void* sim, int control, int target, double angle);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCRy(void* sim, int control, int target, double angle);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCRz(void* sim, int control, int target, double angle);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCSwap(void* sim, int control, int qubit1, int qubit2);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCCX(void* sim, int control1, int control2, int target);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplySdg(void* sim, int qubit);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyTdg(void* sim, int qubit);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplySx(void* sim, int qubit);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplySxDg(void* sim, int qubit);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyK(void* sim, int qubit);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyU(void* sim, int qubit, double theta, double phi, double lambda, double gamma);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCU(void* sim, int control, int target, double theta, double phi, double lambda, double gamma);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCP(void* sim, int control, int target, double angle);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCSx(void* sim, int control, int target);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		void ApplyCSxDg(void* sim, int control, int target);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		int GetAmplitudes(void* sim, void* buffer, size_t bufSize);
 }
 
 #endif // _INTERFACE_H_
