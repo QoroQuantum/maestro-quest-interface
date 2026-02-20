@@ -237,12 +237,12 @@ extern "C" {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-		int GetAmplitudes(void* sim, void* buffer, size_t bufSize);
+		int GetAmplitudes(void* sim, void* buffer, unsigned long long int bufSize);
 
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-		int GetAmplitude(void* sim, long long int index, void* outAmp, size_t bufSize);
+		int GetAmplitude(void* sim, long long int index, void* outAmp, unsigned long long int bufSize);
 
 #ifdef _WIN32
 	__declspec(dllexport)

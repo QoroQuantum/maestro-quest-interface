@@ -27,6 +27,8 @@ target_include_directories(maestroquest
     PRIVATE ${quest_SOURCE_DIR}
 )
 
+target_include_directories(maestroquest PRIVATE ${quest_SOURCE_DIR} ${quest_SOURCE_DIR}/include ${quest_SOURCE_DIR}/quest/include ${quest_BINARY_DIR})
+
 target_link_libraries(maestroquest PRIVATE quest)
 
 # --- tests executable ---

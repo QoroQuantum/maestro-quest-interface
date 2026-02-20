@@ -6,6 +6,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <numeric>
+#include <memory>
 #define _USE_MATH_DEFINES
 #include <math.h>
 
