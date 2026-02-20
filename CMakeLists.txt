@@ -29,7 +29,7 @@ target_include_directories(maestroquest
 
 target_include_directories(maestroquest PRIVATE ${quest_SOURCE_DIR} ${quest_SOURCE_DIR}/include ${quest_SOURCE_DIR}/quest/include ${quest_BINARY_DIR})
 
-target_link_libraries(maestroquest PRIVATE quest)
+target_link_libraries(maestroquest PRIVATE QuEST)
 
 # --- tests executable ---
 add_executable(tests tests/tests.cpp)
