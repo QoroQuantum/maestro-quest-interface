@@ -238,6 +238,16 @@ extern "C" {
 	__declspec(dllexport)
 #endif
 		int GetAmplitudes(void* sim, void* buffer, size_t bufSize);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+		int GetAmplitude(void* sim, long long int index, void* outAmp, size_t bufSize);
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	int IsDoublePrecision();
 }
 
 #endif // _INTERFACE_H_

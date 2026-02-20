@@ -251,37 +251,37 @@ public:
 		applyMultiControlledPauliX(*qureg, {control1, control2}, target);
 	}
 
-	void ApplySdg(void* sim, int qubit) {
+	static void ApplySdg(void* sim, int qubit) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		applyDiagMatr1(*qureg, qubit, sdgMat);
 	}
 
-	void ApplyTdg(void* sim, int qubit) {
+	static void ApplyTdg(void* sim, int qubit) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		applyDiagMatr1(*qureg, qubit, tdgMat);
 	}
 
-	void ApplySx(void* sim, int qubit) {
+	static void ApplySx(void* sim, int qubit) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		applyCompMatr1(*qureg, qubit, sxMat);
 	}
 
-	void ApplySxDg(void* sim, int qubit) {
+	static void ApplySxDg(void* sim, int qubit) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		applyCompMatr1(*qureg, qubit, sxdgMat);
 	}
 
-	void ApplyK(void* sim, int qubit) {
+	static void ApplyK(void* sim, int qubit) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		applyCompMatr1(*qureg, qubit, kMat);
 	}
 
-	void ApplyU(void* sim, int qubit, double theta, double phi, double lambda, double gamma) {
+	static void ApplyU(void* sim, int qubit, double theta, double phi, double lambda, double gamma) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 
@@ -298,7 +298,7 @@ public:
 		applyCompMatr1(*qureg, qubit, Umat);
 	}
 
-	void ApplyCP(void* sim, int control, int target, double angle) {
+	static void ApplyCP(void* sim, int control, int target, double angle) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 
@@ -307,19 +307,19 @@ public:
 		applyControlledDiagMatr1(*qureg, control, target, pmat);
 	}
 
-	void ApplyCSx(void* sim, int control, int target) {
+	static void ApplyCSx(void* sim, int control, int target) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		applyControlledCompMatr1(*qureg, control, target, sxMat);
 	}
 
-	void ApplyCSxDg(void* sim, int control, int target) {
+	static void ApplyCSxDg(void* sim, int control, int target) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		applyControlledCompMatr1(*qureg, control, target, sxdgMat);
 	}
 
-	void ApplyCU(void* sim, int control, int target, double theta, double phi, double lambda, double gamma) {
+	static void ApplyCU(void* sim, int control, int target, double theta, double phi, double lambda, double gamma) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		const FLOAT_TYPE t2 = theta * 0.5;
@@ -345,16 +345,33 @@ public:
 		return 1;
 	}
 
+	static int GetAmplitude(void* sim, long long int index, void* outAmp, size_t bufSize) {
+		if (!sim || !outAmp) return 0;
+		Qureg* qureg = static_cast<Qureg*>(sim);
+		const size_t numAmps = qureg->numAmps;
+		if (index < 0 || static_cast<size_t>(index) >= numAmps) return 0; // index out of bounds
+		else if (bufSize < sizeof(qcomp)) return 0; // buffer too small
+		qcomp val = getQuregAmp(*qureg, index);
+		
+		*static_cast<qcomp*>(outAmp) = val;
+
+		return 1;
+	}
+
+	static int IsDoublePrecision() {
+		return sizeof(FLOAT_TYPE) == sizeof(double) ? 1 : 0;
+	}
+
 private:
 	unsigned long int curHandle = 0;
 	std::mutex simulatorsMutex;
 	std::unordered_map<unsigned long int, std::unique_ptr<Qureg>> simulators;
 
-	DiagMatr1 sdgMat = getInlineDiagMatr1({ 1, -1_i });
-	DiagMatr1 tdgMat = getInlineDiagMatr1({ std::complex<FLOAT_TYPE>(1.,0.), std::polar<FLOAT_TYPE>(1., -M_PI / 4.) });
-	CompMatr1 sxMat = getInlineCompMatr1({ {{0.5,0.5},{0.5,-0.5}}, {{0.5,-0.5},{0.5,0.5}} });
-	CompMatr1 sxdgMat = getInlineCompMatr1({ {{0.5,-0.5},{0.5,0.5}}, {{0.5,0.5},{0.5,-0.5}} });
-	CompMatr1 kMat = getInlineCompMatr1({ {{1. / sqrt(2.),0.},{0.,-1. / sqrt(2.)}}, {{0.,1. / sqrt(2.)},{-1. / sqrt(2.),0.}} });
+	static inline DiagMatr1 sdgMat = getInlineDiagMatr1({ std::complex<FLOAT_TYPE>(1.,0.), std::complex<FLOAT_TYPE>(0., -1.)});
+	static inline DiagMatr1 tdgMat = getInlineDiagMatr1({ std::complex<FLOAT_TYPE>(1.,0.), std::polar<FLOAT_TYPE>(1., -M_PI / 4.) });
+	static inline CompMatr1 sxMat = getInlineCompMatr1({ {{0.5,0.5},{0.5,-0.5}}, {{0.5,-0.5},{0.5,0.5}} });
+	static inline CompMatr1 sxdgMat = getInlineCompMatr1({ {{0.5,-0.5},{0.5,0.5}}, {{0.5,0.5},{0.5,-0.5}} });
+	static inline CompMatr1 kMat = getInlineCompMatr1({ {{1. / sqrt(2.),0.},{0.,-1. / sqrt(2.)}}, {{0.,1. / sqrt(2.)},{-1. / sqrt(2.),0.}} });
 };
 
 #endif // _MAESTROQUEST_H_

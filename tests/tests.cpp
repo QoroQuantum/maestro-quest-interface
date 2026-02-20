@@ -76,6 +76,10 @@ int main()
 		return 1;
 	}
 
+	ApplySdg(sim, 0);
+	ApplyTdg(sim, 1);
+
+
 	DestroySimulator(handle);
 	Finalize();
 

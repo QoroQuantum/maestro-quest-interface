@@ -339,8 +339,7 @@ __declspec(dllexport)
 void ApplySdg(void* sim, int qubit)
 {
 	if (!sim) return;
-	MaestroQuest* msim = static_cast<MaestroQuest*>(sim);
-	msim->ApplySdg(sim, qubit);
+	MaestroQuest::ApplySdg(sim, qubit);
 }
 
 #ifdef _WIN32
@@ -349,8 +348,7 @@ __declspec(dllexport)
 void ApplyTdg(void* sim, int qubit)
 {
 	if (!sim) return;
-	MaestroQuest* msim = static_cast<MaestroQuest*>(sim);
-	msim->ApplyTdg(msim, qubit);
+	MaestroQuest::ApplyTdg(sim, qubit);
 }
 
 #ifdef _WIN32
@@ -359,8 +357,7 @@ __declspec(dllexport)
 void ApplySx(void* sim, int qubit)
 {
 	if (!sim) return;
-	MaestroQuest* msim = static_cast<MaestroQuest*>(sim);
-	msim->ApplySx(sim, qubit);
+	MaestroQuest::ApplySx(sim, qubit);
 }
 
 #ifdef _WIN32
@@ -369,8 +366,7 @@ __declspec(dllexport)
 void ApplySxDg(void* sim, int qubit)
 {
 	if (!sim) return;
-	MaestroQuest* msim = static_cast<MaestroQuest*>(sim);
-	msim->ApplySxDg(sim, qubit);
+	MaestroQuest::ApplySxDg(sim, qubit);
 }
 
 #ifdef _WIN32
@@ -379,8 +375,7 @@ __declspec(dllexport)
 void ApplyK(void* sim, int qubit)
 {
 	if (!sim) return;
-	MaestroQuest* msim = static_cast<MaestroQuest*>(sim);
-	msim->ApplyK(sim, qubit);
+	MaestroQuest::ApplyK(sim, qubit);
 }
 
 #ifdef _WIN32
@@ -389,8 +384,7 @@ __declspec(dllexport)
 void ApplyU(void* sim, int qubit, double theta, double phi, double lambda, double gamma)
 {
 	if (!sim) return;
-	MaestroQuest* msim = static_cast<MaestroQuest*>(sim);
-	msim->ApplyU(sim, qubit, theta, phi, lambda, gamma);
+	MaestroQuest::ApplyU(sim, qubit, theta, phi, lambda, gamma);
 }
 
 #ifdef _WIN32
@@ -399,8 +393,7 @@ __declspec(dllexport)
 void ApplyCU(void* sim, int control, int target, double theta, double phi, double lambda, double gamma)
 {
 	if (!sim) return;
-	MaestroQuest* msim = static_cast<MaestroQuest*>(sim);
-	msim->ApplyCU(sim, control, target, theta, phi, lambda, gamma);
+	MaestroQuest::ApplyCU(sim, control, target, theta, phi, lambda, gamma);
 }
 
 #ifdef _WIN32
@@ -409,8 +402,7 @@ __declspec(dllexport)
 void ApplyCP(void* sim, int control, int target, double angle)
 {
 	if (!sim) return;
-	MaestroQuest* msim = static_cast<MaestroQuest*>(sim);
-	msim->ApplyCP(sim, control, target, angle);
+	MaestroQuest::ApplyCP(sim, control, target, angle);
 }
 
 #ifdef _WIN32
@@ -419,8 +411,7 @@ __declspec(dllexport)
 void ApplyCSx(void* sim, int control, int target)
 {
 	if (!sim) return;
-	MaestroQuest* msim = static_cast<MaestroQuest*>(sim);
-	msim->ApplyCSx(sim, control, target);
+	MaestroQuest::ApplyCSx(sim, control, target);
 }
 
 #ifdef _WIN32
@@ -429,8 +420,7 @@ __declspec(dllexport)
 void ApplyCSxDg(void* sim, int control, int target)
 {
 	if (!sim) return;
-	MaestroQuest* msim = static_cast<MaestroQuest*>(sim);
-	msim->ApplyCSxDg(sim, control, target);
+	MaestroQuest::ApplyCSxDg(sim, control, target);
 }
 
 #ifdef _WIN32
@@ -440,5 +430,22 @@ int GetAmplitudes(void* sim, void* buffer, size_t bufSize)
 {
 	if (!sim || !buffer || bufSize == 0) return 0;
 	MaestroQuest::GetAmplitudes(sim, buffer, bufSize);
+}
+
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+int GetAmplitude(void* sim, long long int index, void* outAmp, size_t bufSize)
+{
+	if (!sim || !outAmp || bufSize == 0) return 0;
+	return MaestroQuest::GetAmplitude(sim, index, outAmp, bufSize);
+}
+
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+int IsDoublePrecision()
+{
+	return MaestroQuest::IsDoublePrecision();
 }
 
