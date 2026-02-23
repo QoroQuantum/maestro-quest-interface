@@ -65,13 +65,6 @@ CMake automatically fetches and builds QuEST from source. The build produces:
 ### Running the Tests
 
 ```bash
-cd build
-ctest --output-on-failure
-```
-
-Or run the test binary directly:
-
-```bash
 ./build/tests             # Linux / macOS
 build\Release\tests.exe   # Windows
 ```
@@ -137,18 +130,6 @@ export LD_LIBRARY_PATH=/path/to/maestro-quest-interface/build:$LD_LIBRARY_PATH
 
 # macOS
 export DYLD_LIBRARY_PATH=/path/to/maestro-quest-interface/build:$DYLD_LIBRARY_PATH
-```
-
-**Using QuestLibSim directly in C++ code:**
-
-```cpp
-#include "Simulators/QuestLibSim.h"
-
-Simulators::QuestLibSim questLib;
-if (!questLib.Init("maestroquest.so")) {         // Linux
-// if (!questLib.Init("maestroquest.dll")) {      // Windows
-    std::cerr << "Failed to load maestroquest library\n";
-}
 ```
 
 ### Step 4 – Use the QuEST backend via Maestro
