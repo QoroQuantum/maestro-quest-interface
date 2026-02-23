@@ -6,7 +6,7 @@ A shared library that wraps the [QuEST](https://github.com/QuEST-Kit/QuEST) quan
 
 ## Overview
 
-`maestroquest` bridges Maestro's simulator-agnostic orchestration layer and the high-performance QuEST statevector simulator. At runtime, Maestro opens the compiled shared library (`libmaestroquest.so` / `libmaestroquest.dylib` / `maestroquest.dll`) and calls the exported C functions to:
+`maestroquest` bridges Maestro's simulator-agnostic orchestration layer and the high-performance QuEST statevector simulator. At runtime, Maestro opens the compiled shared library (`maestroquest.so` / `maestroquest.dylib` / `maestroquest.dll`) and calls the exported C functions to:
 
 - Create and destroy qubit registers
 - Apply single-, two-, and three-qubit quantum gates
@@ -57,7 +57,7 @@ CMake automatically fetches and builds QuEST from source. The build produces:
 
 | Artifact | Location |
 |---|---|
-| `libmaestroquest.so` (Linux) / `libmaestroquest.dylib` (macOS) / `maestroquest.dll` (Windows) | `build/` |
+| `maestroquest.so` (Linux) / `maestroquest.dylib` (macOS) / `maestroquest.dll` (Windows) | `build/` |
 | `tests` executable | `build/` (Linux / macOS) or `build/Release/tests.exe` (Windows) |
 
 > **Note:** The CI pipeline currently builds the project but does not run tests. To verify correctness, run the tests locally as described below.
@@ -93,7 +93,7 @@ Follow these steps to enable the QuEST backend in a Maestro installation.
 Follow the [Building](#building) section above to produce the shared library. Note the path to the compiled library file, for example:
 
 ```
-/path/to/maestro-quest-interface/build/libmaestroquest.so
+/path/to/maestro-quest-interface/build/maestroquest.so
 ```
 
 ### Step 2 – Install / build Maestro
@@ -108,28 +108,17 @@ cd maestro
 
 ### Step 3 – Point Maestro to the library
 
-Maestro's `SimulatorsFactory` loads `maestroquest` by calling `QuestLibSim::Init()` with the bare library name `maestroquest.so` (Linux) or `maestroquest.dll` (Windows). Because CMake produces a `lib`-prefixed filename by default (e.g. `libmaestroquest.so`), you need to ensure the library is findable under the expected name.
+Maestro's `SimulatorsFactory` loads `maestroquest` by calling `QuestLibSim::Init()` with the library name `maestroquest.so` (Linux) or `maestroquest.dll` (Windows). The CMake build already strips the default `lib` prefix, so the output file matches the expected name.
 
-**Option A – create a symlink (recommended for development):**
-
-```bash
-# Linux
-cd build
-ln -sf libmaestroquest.so maestroquest.so
-
-# macOS
-ln -sf libmaestroquest.dylib maestroquest.dylib
-```
-
-**Option B – copy or symlink to a standard search path:**
+**Option A – copy to a standard search path:**
 
 ```bash
 # Linux
-sudo cp build/libmaestroquest.so /usr/local/lib/maestroquest.so
+sudo cp build/maestroquest.so /usr/local/lib/
 sudo ldconfig
 ```
 
-**Option C – set the library search path at runtime:**
+**Option B – set the library search path at runtime:**
 
 ```bash
 # Linux
