@@ -134,41 +134,127 @@ export DYLD_LIBRARY_PATH=/path/to/maestro-quest-interface/build:$DYLD_LIBRARY_PA
 
 ### Step 4 – Use the QuEST backend via Maestro
 
-The QuEST backend is exposed as `SimulatorType::kQuestSim` in Maestro and currently supports statevector simulation only. You can use it through Maestro's Python API or C++ interface.
+The QuEST backend is exposed as `SimulatorType::kQuestSim` in Maestro and currently supports statevector simulation only.
 
-**Python (via QuantumCircuit):**
+**C++ (via the Maestro orchestration layer):**
+
+```cpp
+#include "Simulators/Factory.h"
+#include "maestrolib/Interface.h"
+
+// Initialize the QuEST library (done once at startup)
+Simulators::SimulatorsFactory::InitQuestLibrary();
+
+// Create a simulator network with the desired number of qubits
+unsigned long int handle = CreateSimpleSimulator(numQubits);
+
+// Configure the network to use the QuEST statevector backend
+RemoveAllOptimizationSimulatorsAndAdd(
+    handle,
+    static_cast<int>(Simulators::SimulatorType::kQuestSim),
+    static_cast<int>(Simulators::SimulationType::kStatevector)
+);
+
+// Execute circuits through the network
+// (the network creates and manages the simulator internally)
+```
+
+### Step 5 – Use the QuEST backend via Python
+
+The QuEST backend is fully exposed in the Maestro Python bindings as `SimulatorType.QuestSim`. It supports statevector simulation only.
+
+#### Library management
+
+Before using the QuEST simulator, initialize the library once at startup:
 
 ```python
 import maestro
 
-QuantumCircuit = maestro.circuits.QuantumCircuit
+# Initialize the QuEST shared library (call once)
+maestro.init_quest()
+
+# Check whether the library loaded successfully
+if maestro.is_quest_available():
+    print("QuEST backend is ready")
+```
+
+> **Note:** `init_quest()` returns `True` on success. If it returns `False`, make sure `libmaestroquest` is on the library search path (see [Step 3](#step-3--point-maestro-to-the-library)).
+
+#### Running circuits with `simple_execute`
+
+```python
+import maestro
+
+maestro.init_quest()
+
+qasm = """
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[2];
+h q[0];
+cx q[0], q[1];
+measure q -> c;
+"""
+
+result = maestro.simple_execute(
+    qasm,
+    simulator_type=maestro.SimulatorType.QuestSim,
+    simulation_type=maestro.SimulationType.Statevector,
+    shots=1000
+)
+
+print(result['counts'])      # e.g. {'00': 502, '11': 498}
+print(result['time_taken'])  # execution time in seconds
+```
+
+#### Estimating expectation values with `simple_estimate`
+
+```python
+import maestro
+
+maestro.init_quest()
+
+qasm = """
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+cx q[0], q[1];
+"""
+
+result = maestro.simple_estimate(
+    qasm,
+    "ZZ;XX;YY",
+    simulator_type=maestro.SimulatorType.QuestSim,
+    simulation_type=maestro.SimulationType.Statevector,
+)
+
+print(result['expectation_values'])  # [1.0, 1.0, -1.0]
+```
+
+#### Using the `QuantumCircuit` API
+
+```python
+from maestro.circuits import QuantumCircuit
+import maestro
+
+maestro.init_quest()
 
 qc = QuantumCircuit()
 qc.h(0)
 qc.cx(0, 1)
-qc.measure([(0, 0), (1, 1)])
+qc.measure_all()
 
 result = qc.execute(
     simulator_type=maestro.SimulatorType.QuestSim,
-    shots=1024
+    simulation_type=maestro.SimulationType.Statevector,
+    shots=1000
 )
-print(result["counts"])
+print(result['counts'])
 ```
 
-**C++ (via the SimulatorsFactory):**
-
-```cpp
-#include "Simulators/Factory.h"
-
-// Initialize the QuEST library (done once)
-Simulators::SimulatorsFactory::InitQuestLibrary();
-
-// Create a QuEST-backed simulator
-auto sim = Simulators::SimulatorsFactory::CreateSimulator(
-    Simulators::SimulatorType::kQuestSim,
-    Simulators::SimulationType::kStatevector
-);
-```
+> **Important:** `QuestSim` only supports `SimulationType.Statevector`. Requesting any other simulation type (e.g. `MatrixProductState`, `Stabilizer`) will raise an error.
 
 Refer to the [Maestro tutorial](https://github.com/QoroQuantum/maestro/blob/main/TUTORIAL.md) and [examples](https://github.com/QoroQuantum/maestro/tree/main/examples) for full usage details.
 
