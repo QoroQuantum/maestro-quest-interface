@@ -10,7 +10,7 @@ include(FetchContent)
 FetchContent_Declare(
     QuEST
     GIT_REPOSITORY https://github.com/QuEST-Kit/QuEST.git
-    GIT_TAG        main
+    GIT_TAG        v4.2.0
 )
 FetchContent_MakeAvailable(QuEST)
 
