@@ -1,12 +1,12 @@
 # Maestro QuEST Interface
 
-[![Built on Ubuntu](https://github.com/QoroQuantum/maestro-quest-interface/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/QoroQuantum/maestro-quest-interface/actions/workflows/cmake-single-platform.yml)
+[![CMake on Ubuntu](https://github.com/QoroQuantum/maestro-quest-interface/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/QoroQuantum/maestro-quest-interface/actions/workflows/cmake-single-platform.yml)
 
 A shared library that wraps the [QuEST](https://github.com/QuEST-Kit/QuEST) quantum circuit simulator and exposes a stable C ABI so that [Maestro](https://github.com/QoroQuantum/maestro) can load it dynamically as a simulation backend.
 
 ## Overview
 
-`maestroquest` bridges Maestro's simulator-agnostic orchestration layer and the high-performance QuEST statevector simulator. At runtime, Maestro opens the compiled shared library (`libmaestroquest.so` / `maestroquest.dll` / `libmaestroquest.dylib`) and calls the exported C functions to:
+`maestroquest` bridges Maestro's simulator-agnostic orchestration layer and the high-performance QuEST statevector simulator. At runtime, Maestro opens the compiled shared library (`libmaestroquest.so` / `libmaestroquest.dylib` / `maestroquest.dll`) and calls the exported C functions to:
 
 - Create and destroy qubit registers
 - Apply single-, two-, and three-qubit quantum gates
@@ -58,7 +58,9 @@ CMake automatically fetches and builds QuEST from source. The build produces:
 | Artifact | Location |
 |---|---|
 | `libmaestroquest.so` (Linux) / `libmaestroquest.dylib` (macOS) / `maestroquest.dll` (Windows) | `build/` |
-| `tests` executable | `build/` |
+| `tests` executable | `build/` (Linux / macOS) or `build/Release/tests.exe` (Windows) |
+
+> **Note:** The CI pipeline currently builds the project but does not run tests. To verify correctness, run the tests locally as described below.
 
 ### Running the Tests
 
@@ -70,8 +72,8 @@ ctest --output-on-failure
 Or run the test binary directly:
 
 ```bash
-./build/tests          # Linux / macOS
-build\Release\tests    # Windows
+./build/tests             # Linux / macOS
+build\Release\tests.exe   # Windows
 ```
 
 A passing run prints:
@@ -106,54 +108,88 @@ cd maestro
 
 ### Step 3 – Point Maestro to the library
 
-The `QuestLibSim` loader expects the full path (or a library name resolvable by the dynamic linker) to `libmaestroquest`.
+Maestro's `SimulatorsFactory` loads `maestroquest` by calling `QuestLibSim::Init()` with the bare library name `maestroquest.so` (Linux) or `maestroquest.dll` (Windows). Because CMake produces a `lib`-prefixed filename by default (e.g. `libmaestroquest.so`), you need to ensure the library is findable under the expected name.
 
-**Option A – pass the path directly in C++ code:**
+**Option A – create a symlink (recommended for development):**
+
+```bash
+# Linux
+cd build
+ln -sf libmaestroquest.so maestroquest.so
+
+# macOS
+ln -sf libmaestroquest.dylib maestroquest.dylib
+```
+
+**Option B – copy or symlink to a standard search path:**
+
+```bash
+# Linux
+sudo cp build/libmaestroquest.so /usr/local/lib/maestroquest.so
+sudo ldconfig
+```
+
+**Option C – set the library search path at runtime:**
+
+```bash
+# Linux
+export LD_LIBRARY_PATH=/path/to/maestro-quest-interface/build:$LD_LIBRARY_PATH
+
+# macOS
+export DYLD_LIBRARY_PATH=/path/to/maestro-quest-interface/build:$DYLD_LIBRARY_PATH
+```
+
+**Using QuestLibSim directly in C++ code:**
 
 ```cpp
 #include "Simulators/QuestLibSim.h"
 
 Simulators::QuestLibSim questLib;
-if (!questLib.Init("/path/to/libmaestroquest.so")) {
+if (!questLib.Init("maestroquest.so")) {         // Linux
+// if (!questLib.Init("maestroquest.dll")) {      // Windows
     std::cerr << "Failed to load maestroquest library\n";
 }
 ```
 
-**Option B – copy the library to a standard search path and use the bare name:**
+### Step 4 – Use the QuEST backend via Maestro
 
-```bash
-# Linux example
-sudo cp build/libmaestroquest.so /usr/local/lib/
-sudo ldconfig
+The QuEST backend is exposed as `SimulatorType::kQuestSim` in Maestro and currently supports statevector simulation only. You can use it through Maestro's Python API or C++ interface.
 
-# Then in code:
-questLib.Init("libmaestroquest.so");
-```
-
-**Option C – add the build directory to `LD_LIBRARY_PATH` (Linux / macOS) at runtime:**
-
-```bash
-export LD_LIBRARY_PATH=/path/to/maestro-quest-interface/build:$LD_LIBRARY_PATH
-# macOS: export DYLD_LIBRARY_PATH=...
-```
-
-### Step 4 – Use the QuEST backend via Maestro's Python API
-
-After loading the library, Maestro automatically routes circuits to the QuEST backend when it is selected. Using Maestro's Python bindings:
+**Python (via QuantumCircuit):**
 
 ```python
 import maestro
 
-# Simulate a 2-qubit Bell circuit using the QuEST backend
-result = maestro.simulate(
-    circuit,                        # a Qiskit QuantumCircuit
-    backend="quest",                # select the QuEST backend
-    lib_path="/path/to/libmaestroquest.so"
+QuantumCircuit = maestro.circuits.QuantumCircuit
+
+qc = QuantumCircuit()
+qc.h(0)
+qc.cx(0, 1)
+qc.measure([(0, 0), (1, 1)])
+
+result = qc.execute(
+    simulator_type=maestro.SimulatorType.QuestSim,
+    shots=1024
 )
-print(result.get_counts())
+print(result["counts"])
 ```
 
-Refer to the [Maestro tutorial](https://github.com/QoroQuantum/maestro/blob/main/TUTORIAL.md) and [Python examples](https://github.com/QoroQuantum/maestro/tree/main/examples) for full usage details.
+**C++ (via the SimulatorsFactory):**
+
+```cpp
+#include "Simulators/Factory.h"
+
+// Initialize the QuEST library (done once)
+Simulators::SimulatorsFactory::InitQuestLibrary();
+
+// Create a QuEST-backed simulator
+auto sim = Simulators::SimulatorsFactory::CreateSimulator(
+    Simulators::SimulatorType::kQuestSim,
+    Simulators::SimulationType::kStatevector
+);
+```
+
+Refer to the [Maestro tutorial](https://github.com/QoroQuantum/maestro/blob/main/TUTORIAL.md) and [examples](https://github.com/QoroQuantum/maestro/tree/main/examples) for full usage details.
 
 ## C API Reference
 
@@ -171,9 +207,9 @@ The following functions are exported by `maestroquest`. They form the contract t
 | Function | Description |
 |---|---|
 | `unsigned long int CreateSimulator(int nrQubits)` | Creates a new qubit register initialized to \|0⟩. Returns an opaque handle. |
-| `void DestroySimulator(unsigned long int handle)` | Destroys the qubit register identified by `handle`. |
-| `unsigned long int CloneSimulator(void* sim)` | Clones an existing register and returns a handle to the copy. |
-| `void* GetSimulator(unsigned long int handle)` | Returns a raw pointer to the qubit register for gate operations. |
+| `void DestroySimulator(unsigned long int simHandle)` | Destroys the qubit register identified by `simHandle`. |
+| `unsigned long int CloneSimulator(void* sim)` | Clones an existing register (raw pointer) and returns a handle to the copy. |
+| `void* GetSimulator(unsigned long int simHandle)` | Returns a raw pointer to the qubit register for gate operations. |
 
 ### State Queries
 
@@ -199,17 +235,17 @@ The following functions are exported by `maestroquest`. They form the contract t
 
 | Function | Gate |
 |---|---|
-| `ApplyX` | Pauli-X (NOT) |
-| `ApplyY` | Pauli-Y |
-| `ApplyZ` | Pauli-Z |
-| `ApplyH` | Hadamard |
-| `ApplyS` | S |
-| `ApplySdg` | S† |
-| `ApplyT` | T |
-| `ApplyTdg` | T† |
-| `ApplySx` | √X |
-| `ApplySxDg` | (√X)† |
-| `ApplyK` | K (Hy) |
+| `ApplyX(sim, qubit)` | Pauli-X (NOT) |
+| `ApplyY(sim, qubit)` | Pauli-Y |
+| `ApplyZ(sim, qubit)` | Pauli-Z |
+| `ApplyH(sim, qubit)` | Hadamard |
+| `ApplyS(sim, qubit)` | S |
+| `ApplySdg(sim, qubit)` | S† |
+| `ApplyT(sim, qubit)` | T |
+| `ApplyTdg(sim, qubit)` | T† |
+| `ApplySx(sim, qubit)` | √X |
+| `ApplySxDg(sim, qubit)` | (√X)† |
+| `ApplyK(sim, qubit)` | K (Hy) |
 | `ApplyP(sim, qubit, angle)` | Phase shift P(θ) |
 | `ApplyRx(sim, qubit, angle)` | Rotation Rx(θ) |
 | `ApplyRy(sim, qubit, angle)` | Rotation Ry(θ) |
@@ -220,24 +256,27 @@ The following functions are exported by `maestroquest`. They form the contract t
 
 | Function | Gate |
 |---|---|
-| `ApplyCX` | CNOT |
-| `ApplyCY` | Controlled-Y |
-| `ApplyCZ` | Controlled-Z |
-| `ApplyCS` | Controlled-S |
-| `ApplyCT` | Controlled-T |
-| `ApplyCH` | Controlled-H |
-| `ApplySwap` | SWAP |
+| `ApplyCX(sim, ctrl, tgt)` | CNOT |
+| `ApplyCY(sim, ctrl, tgt)` | Controlled-Y |
+| `ApplyCZ(sim, ctrl, tgt)` | Controlled-Z |
+| `ApplyCS(sim, ctrl, tgt)` | Controlled-S |
+| `ApplyCT(sim, ctrl, tgt)` | Controlled-T |
+| `ApplyCH(sim, ctrl, tgt)` | Controlled-H |
+| `ApplySwap(sim, qubit1, qubit2)` | SWAP |
 | `ApplyCP(sim, ctrl, tgt, angle)` | Controlled phase |
-| `ApplyCRx / ApplyCRy / ApplyCRz` | Controlled rotations |
-| `ApplyCSx / ApplyCSxDg` | Controlled √X / (√X)† |
+| `ApplyCRx(sim, ctrl, tgt, angle)` | Controlled Rx |
+| `ApplyCRy(sim, ctrl, tgt, angle)` | Controlled Ry |
+| `ApplyCRz(sim, ctrl, tgt, angle)` | Controlled Rz |
+| `ApplyCSx(sim, ctrl, tgt)` | Controlled √X |
+| `ApplyCSxDg(sim, ctrl, tgt)` | Controlled (√X)† |
 | `ApplyCU(sim, ctrl, tgt, theta, phi, lambda, gamma)` | Controlled-U |
 
 ### Three-Qubit Gates
 
 | Function | Gate |
 |---|---|
-| `ApplyCCX` | Toffoli (CCX) |
-| `ApplyCSwap` | Fredkin (controlled-SWAP) |
+| `ApplyCCX(sim, ctrl1, ctrl2, tgt)` | Toffoli (CCX) |
+| `ApplyCSwap(sim, ctrl, qubit1, qubit2)` | Fredkin (controlled-SWAP) |
 
 ## License
 
