@@ -53,6 +53,12 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 ```
 
+> **macOS note:** QuEST enables multithreading (OpenMP) by default. If OpenMP is not installed, either install it (`brew install libomp && export OpenMP_ROOT=$(brew --prefix)/opt/libomp`) or disable it:
+>
+> ```bash
+> cmake -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_MULTITHREADING=OFF
+> ```
+
 CMake automatically fetches and builds QuEST from source. The build produces:
 
 | Artifact | Location |
@@ -86,7 +92,8 @@ Follow these steps to enable the QuEST backend in a Maestro installation.
 Follow the [Building](#building) section above to produce the shared library. Note the path to the compiled library file, for example:
 
 ```
-/path/to/maestro-quest-interface/build/libmaestroquest.so
+/path/to/maestro-quest-interface/build/libmaestroquest.so      # Linux
+/path/to/maestro-quest-interface/build/libmaestroquest.dylib   # macOS
 ```
 
 ### Step 2 – Install / build Maestro
@@ -109,7 +116,7 @@ The `QuestLibSim` loader expects the full path (or a library name resolvable by 
 #include "Simulators/QuestLibSim.h"
 
 Simulators::QuestLibSim questLib;
-if (!questLib.Init("/path/to/libmaestroquest.so")) {
+if (!questLib.Init("/path/to/libmaestroquest.dylib")) {   // .so on Linux
     std::cerr << "Failed to load maestroquest library\n";
 }
 ```
@@ -132,32 +139,46 @@ export LD_LIBRARY_PATH=/path/to/maestro-quest-interface/build:$LD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH=/path/to/maestro-quest-interface/build:$DYLD_LIBRARY_PATH
 ```
 
-### Step 4 – Use the QuEST backend via Maestro
+### Step 4 – Use the QuEST backend via C++
 
-The QuEST backend is exposed as `SimulatorType::kQuestSim` in Maestro and currently supports statevector simulation only.
-
-**C++ (via the Maestro orchestration layer):**
+The QuEST backend is exposed as simulator type `3` (`kQuestSim`) in Maestro and supports statevector simulation only.
 
 ```cpp
-#include "Simulators/Factory.h"
 #include "maestrolib/Interface.h"
 
-// Initialize the QuEST library (done once at startup)
-Simulators::SimulatorsFactory::InitQuestLibrary();
+// Forward-declare the QuEST init function from libmaestro
+namespace Simulators {
+class SimulatorsFactory {
+ public:
+  static bool InitQuestLibrary();
+};
+}
 
-// Create a simulator network with the desired number of qubits
-unsigned long int handle = CreateSimpleSimulator(numQubits);
+int main() {
+    // Initialize Maestro and load the QuEST library
+    GetMaestroObject();
+    Simulators::SimulatorsFactory::InitQuestLibrary();
 
-// Configure the network to use the QuEST statevector backend
-RemoveAllOptimizationSimulatorsAndAdd(
-    handle,
-    static_cast<int>(Simulators::SimulatorType::kQuestSim),
-    static_cast<int>(Simulators::SimulationType::kStatevector)
-);
+    // Create a simulator and select the QuEST statevector backend
+    unsigned long int handle = CreateSimpleSimulator(2);
+    RemoveAllOptimizationSimulatorsAndAdd(handle, /*kQuestSim=*/3, /*kStatevector=*/0);
 
-// Execute circuits through the network
-// (the network creates and manages the simulator internally)
+    // Execute a Bell-state circuit via QASM
+    const char *qasm =
+        "OPENQASM 2.0;\n"
+        "include \"qelib1.inc\";\n"
+        "qreg q[2]; creg c[2];\n"
+        "h q[0]; cx q[0], q[1];\n"
+        "measure q -> c;\n";
+
+    char *result = SimpleExecute(handle, qasm, "{\"shots\": 1000}");
+    // result is a JSON string: {"counts":{"00":505,"11":495}, ...}
+    FreeResult(result);
+    DestroySimpleSimulator(handle);
+}
 ```
+
+See [`examples/quest_example.cpp`](examples/quest_example.cpp) for a full working example including expectation-value estimation.
 
 ### Step 5 – Use the QuEST backend via Python
 
@@ -257,6 +278,45 @@ print(result['counts'])
 > **Important:** `QuestSim` only supports `SimulationType.Statevector`. Requesting any other simulation type (e.g. `MatrixProductState`, `Stabilizer`) will raise an error.
 
 Refer to the [Maestro tutorial](https://github.com/QoroQuantum/maestro/blob/main/TUTORIAL.md) and [examples](https://github.com/QoroQuantum/maestro/tree/main/examples) for full usage details.
+
+## Examples
+
+The [`examples/`](examples/) directory contains runnable examples for both Python and C++.
+
+### Python
+
+```bash
+# Set the library search path so Maestro can find libmaestroquest
+export DYLD_LIBRARY_PATH=/path/to/maestro-quest-interface/build:$DYLD_LIBRARY_PATH  # macOS
+export LD_LIBRARY_PATH=/path/to/maestro-quest-interface/build:$LD_LIBRARY_PATH      # Linux
+
+python examples/quest_example.py
+```
+
+Covers library initialisation, QASM-based circuit execution, expectation-value estimation, the `QuantumCircuit` API, and parametric rotation circuits.
+
+### C++
+
+The C++ example requires a built Maestro installation. Build with:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DMAESTRO_DIR=/path/to/maestro
+cmake --build build --target quest_example
+```
+
+Run (both `libmaestro` and `libmaestroquest` must be on the library search path):
+
+```bash
+# macOS
+export DYLD_LIBRARY_PATH=/path/to/maestro/build:/path/to/maestro-quest-interface/build
+./build/quest_example
+
+# Linux
+export LD_LIBRARY_PATH=/path/to/maestro/build:/path/to/maestro-quest-interface/build
+./build/quest_example
+```
+
+Covers QASM-based circuit execution and expectation-value estimation through Maestro's orchestration layer.
 
 ## C API Reference
 
