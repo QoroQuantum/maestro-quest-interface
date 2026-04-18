@@ -230,6 +230,33 @@ bool testAmplitudes() {
     return true;
 }
 
+bool testCloneSimulatorNull() {
+    // CloneSimulator must return 0 for a null pointer (and not crash).
+    auto handle = CloneSimulator(nullptr);
+    REQUIRE(handle == 0);
+    return true;
+}
+
+bool testExpectationValueEdgeCases() {
+    auto handle = CreateSimulator(2);
+    void* sim = GetSimulator(handle);
+
+    // Empty Pauli string → 0.0
+    REQUIRE_CLOSE(GetExpectationValue(sim, ""), 0.0);
+
+    // Null Pauli string → 0.0
+    REQUIRE_CLOSE(GetExpectationValue(sim, nullptr), 0.0);
+
+    // Pauli string longer than qubit count → 0.0
+    REQUIRE_CLOSE(GetExpectationValue(sim, "ZZZ"), 0.0);
+
+    // Sanity: valid string still works
+    REQUIRE_CLOSE(GetExpectationValue(sim, "ZZ"), 1.0);
+
+    DestroySimulator(handle);
+    return true;
+}
+
 int main()
 {
     Initialize();
@@ -239,6 +266,8 @@ int main()
     if(!testTwoQubitGates()) { std::cerr << "testTwoQubitGates failed" << std::endl; return 1; }
     if(!testThreeQubitGates()) { std::cerr << "testThreeQubitGates failed" << std::endl; return 1; }
     if(!testAmplitudes()) { std::cerr << "testAmplitudes failed" << std::endl; return 1; }
+    if(!testCloneSimulatorNull()) { std::cerr << "testCloneSimulatorNull failed" << std::endl; return 1; }
+    if(!testExpectationValueEdgeCases()) { std::cerr << "testExpectationValueEdgeCases failed" << std::endl; return 1; }
 
     Finalize();
 

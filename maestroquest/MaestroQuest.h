@@ -3,6 +3,7 @@
 #ifndef _MAESTROQUEST_H_
 #define _MAESTROQUEST_H_
 
+#include <limits>
 #include <mutex>
 #include <unordered_map>
 #include <numeric>

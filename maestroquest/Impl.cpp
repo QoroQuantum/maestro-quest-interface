@@ -44,8 +44,10 @@ void Finalize()
 {
 	std::unique_lock<std::shared_mutex> lk(g_instanceMutex);
 	if (isInitialized.exchange(false)) {
-		maestroInstance->DestroyAll();
-		maestroInstance.reset();
+		if (maestroInstance) {
+			maestroInstance->DestroyAll();
+			maestroInstance.reset();
+		}
 		// Only tear down the QuEST/MPI environment if we were the ones
 		// who initialized it. Otherwise the host application owns MPI.
 		if (weOwnQuESTEnv) {
