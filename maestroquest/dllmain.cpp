@@ -1,6 +1,6 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 
-#ifndef __linux__
+#ifdef _WIN32
 
 #include "framework.h"
 

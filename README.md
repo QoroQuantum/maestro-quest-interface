@@ -59,6 +59,35 @@ cmake --build build --config Release
 > cmake -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_MULTITHREADING=OFF
 > ```
 
+### HPC / Distributed Builds (MPI & GPU)
+
+For HPC environments that require distributed (MPI) or GPU-accelerated simulation, use the `MAESTROQUEST_MPI` and `MAESTROQUEST_GPU` build options:
+
+```bash
+# MPI only (distributed state vector across nodes)
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DMAESTROQUEST_MPI=ON
+
+# GPU only
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DMAESTROQUEST_GPU=ON
+
+# Both MPI and GPU
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DMAESTROQUEST_MPI=ON -DMAESTROQUEST_GPU=ON
+```
+
+These flags are forwarded to QuEST's build system and will automatically:
+
+- Find and link against your system's MPI installation (for `-DMAESTROQUEST_MPI`)
+- Enable GPU compilation via CUDA or HIP (for `-DMAESTROQUEST_GPU`)
+
+> **MPI-aware initialization:** When built with `-DMAESTROQUEST_MPI=ON`, the library automatically detects whether MPI has already been initialized by the host application (e.g. via `mpirun` / `srun`). If so, `Initialize()` joins the existing MPI environment and `Finalize()` will **not** call `MPI_Finalize`, leaving MPI lifecycle management to the host. This is safe for embedding in larger MPI applications on HPC clusters.
+
+**Running with MPI:**
+
+```bash
+# The library detects the existing MPI environment automatically
+mpirun -np 4 ./your_application
+```
+
 CMake automatically fetches and builds QuEST from source. The build produces:
 
 | Artifact | Location |
@@ -326,8 +355,8 @@ The following functions are exported by `maestroquest`. They form the contract t
 
 | Function | Description |
 |---|---|
-| `void Initialize()` | Initializes the QuEST environment. Must be called once before any other function. |
-| `void Finalize()` | Finalizes the QuEST environment and frees all resources. |
+| `void Initialize()` | Initializes the QuEST environment. Must be called once before any other function. When built with `-DMAESTROQUEST_MPI`, automatically detects an existing MPI context and joins it instead of calling `MPI_Init`. |
+| `void Finalize()` | Destroys all remaining simulators and frees their resources. If this library initialized the QuEST/MPI environment, finalizes it; otherwise leaves MPI lifecycle to the host. |
 
 ### Simulator Management
 
@@ -335,7 +364,7 @@ The following functions are exported by `maestroquest`. They form the contract t
 |---|---|
 | `unsigned long int CreateSimulator(int nrQubits)` | Creates a new qubit register initialized to \|0⟩. Returns an opaque handle. |
 | `void DestroySimulator(unsigned long int simHandle)` | Destroys the qubit register identified by `simHandle`. |
-| `unsigned long int CloneSimulator(void* sim)` | Clones an existing register (raw pointer) and returns a handle to the copy. |
+| `unsigned long int CloneSimulator(void* sim)` | Clones an existing register (raw pointer) and returns a handle to the copy. Returns 0 if `sim` is null. |
 | `void* GetSimulator(unsigned long int simHandle)` | Returns a raw pointer to the qubit register for gate operations. |
 
 ### State Queries
@@ -346,7 +375,7 @@ The following functions are exported by `maestroquest`. They form the contract t
 | `double GetQubitProbability0(void* sim, int qubit)` | Probability of measuring qubit in state \|0⟩. |
 | `double GetQubitProbability1(void* sim, int qubit)` | Probability of measuring qubit in state \|1⟩. |
 | `double GetOutcomeProbability(void* sim, long long int outcome)` | Probability of a specific basis state. |
-| `double GetExpectationValue(void* sim, const char* pauliStr)` | Expectation value of a Pauli string (e.g. `"ZZI"`). |
+| `double GetExpectationValue(void* sim, const char* pauliStr)` | Expectation value of a Pauli string (e.g. `"ZZI"`). The string length must not exceed the number of qubits in the register. |
 | `int GetAmplitudes(void* sim, void* buffer, unsigned long long int bufSize)` | Copies all state-vector amplitudes into `buffer`. Returns 1 on success. |
 | `int GetAmplitude(void* sim, long long int index, void* outAmp, unsigned long long int bufSize)` | Copies a single amplitude at `index` into `outAmp`. Returns 1 on success. |
 | `int IsDoublePrecision()` | Returns 1 if the library was built with double precision, 0 for single. |

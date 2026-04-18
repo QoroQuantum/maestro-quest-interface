@@ -3,6 +3,7 @@
 #ifndef _MAESTROQUEST_H_
 #define _MAESTROQUEST_H_
 
+#include <limits>
 #include <mutex>
 #include <unordered_map>
 #include <numeric>
@@ -32,11 +33,14 @@ public:
 
 		std::lock_guard<std::mutex> lock(simulatorsMutex);
 
-		if (curHandle == std::numeric_limits<unsigned long int>::max()) {
-			// Handle overflow, reset to 0
-			curHandle = 0;
-		}
-		const unsigned long int handle = ++curHandle;
+		// Find a free handle, skipping any that are still in use
+		do {
+			if (curHandle == std::numeric_limits<unsigned long int>::max())
+				curHandle = 0;
+			++curHandle;
+		} while (simulators.count(curHandle));
+
+		const unsigned long int handle = curHandle;
 		simulators[handle] = std::move(quregPtr);
 
 		return handle;
@@ -46,19 +50,38 @@ public:
 		std::lock_guard<std::mutex> lock(simulatorsMutex);
 
 		auto it = simulators.find(simHandle);
-		if (it != simulators.end())
+		if (it != simulators.end()) {
 			destroyQureg(*(it->second.get()));
+			simulators.erase(it);
+		}
+	}
 
-		simulators.erase(it);
+	/// Destroy all remaining simulators. Called during Finalize to prevent leaks.
+	void DestroyAll() {
+		std::lock_guard<std::mutex> lock(simulatorsMutex);
+		for (auto& [handle, qureg] : simulators) {
+			destroyQureg(*qureg);
+		}
+		simulators.clear();
 	}
 
 	unsigned long int CloneSimulator(void* sim) {
+		if (!sim) return 0;
+
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		auto quregPtr = std::make_unique<Qureg>();
 		*quregPtr = createCloneQureg(*qureg);
 
 		std::lock_guard<std::mutex> lock(simulatorsMutex);
-		const unsigned long int newHandle = ++curHandle;
+
+		// Find a free handle, skipping any that are still in use
+		do {
+			if (curHandle == std::numeric_limits<unsigned long int>::max())
+				curHandle = 0;
+			++curHandle;
+		} while (simulators.count(curHandle));
+
+		const unsigned long int newHandle = curHandle;
 		simulators[newHandle] = std::move(quregPtr);
 		return newHandle;
 	}
@@ -101,6 +124,9 @@ public:
 		if (!sim || !pauliStr) return 0.0;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		std::string pauli(pauliStr);
+		if (pauli.empty() || static_cast<int>(pauli.length()) > qureg->numQubits)
+			return 0.0;
+
 		std::vector<int> qubits(pauli.length());
 		std::iota(qubits.begin(), qubits.end(), 0); 
 
@@ -255,31 +281,31 @@ public:
 	static void ApplySdg(void* sim, int qubit) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
-		applyDiagMatr1(*qureg, qubit, sdgMat);
+		applyDiagMatr1(*qureg, qubit, sdgMat());
 	}
 
 	static void ApplyTdg(void* sim, int qubit) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
-		applyDiagMatr1(*qureg, qubit, tdgMat);
+		applyDiagMatr1(*qureg, qubit, tdgMat());
 	}
 
 	static void ApplySx(void* sim, int qubit) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
-		applyCompMatr1(*qureg, qubit, sxMat);
+		applyCompMatr1(*qureg, qubit, sxMat());
 	}
 
 	static void ApplySxDg(void* sim, int qubit) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
-		applyCompMatr1(*qureg, qubit, sxdgMat);
+		applyCompMatr1(*qureg, qubit, sxdgMat());
 	}
 
 	static void ApplyK(void* sim, int qubit) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
-		applyCompMatr1(*qureg, qubit, kMat);
+		applyCompMatr1(*qureg, qubit, kMat());
 	}
 
 	static void ApplyU(void* sim, int qubit, double theta, double phi, double lambda, double gamma) {
@@ -311,13 +337,13 @@ public:
 	static void ApplyCSx(void* sim, int control, int target) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
-		applyControlledCompMatr1(*qureg, control, target, sxMat);
+		applyControlledCompMatr1(*qureg, control, target, sxMat());
 	}
 
 	static void ApplyCSxDg(void* sim, int control, int target) {
 		if (!sim) return;
 		Qureg* qureg = static_cast<Qureg*>(sim);
-		applyControlledCompMatr1(*qureg, control, target, sxdgMat);
+		applyControlledCompMatr1(*qureg, control, target, sxdgMat());
 	}
 
 	static void ApplyCU(void* sim, int control, int target, double theta, double phi, double lambda, double gamma) {
@@ -336,7 +362,7 @@ public:
 		applyControlledCompMatr1(*qureg, control, target, Umat);
 	}
 
-	static int GetAmplitudes(void* sim, void* buffer, size_t bufSize) {
+	static int GetAmplitudes(void* sim, void* buffer, unsigned long long int bufSize) {
 		if (!sim || !buffer || bufSize == 0) return 0;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		const size_t numAmps = qureg->numAmps;
@@ -346,7 +372,7 @@ public:
 		return 1;
 	}
 
-	static int GetAmplitude(void* sim, long long int index, void* outAmp, size_t bufSize) {
+	static int GetAmplitude(void* sim, long long int index, void* outAmp, unsigned long long int bufSize) {
 		if (!sim || !outAmp) return 0;
 		Qureg* qureg = static_cast<Qureg*>(sim);
 		const size_t numAmps = qureg->numAmps;
@@ -368,11 +394,28 @@ private:
 	std::mutex simulatorsMutex;
 	std::unordered_map<unsigned long int, std::unique_ptr<Qureg>> simulators;
 
-	static inline DiagMatr1 sdgMat = getInlineDiagMatr1({ std::complex<FLOAT_TYPE>(1.,0.), std::complex<FLOAT_TYPE>(0., -1.)});
-	static inline DiagMatr1 tdgMat = getInlineDiagMatr1({ std::complex<FLOAT_TYPE>(1.,0.), std::polar<FLOAT_TYPE>(1., -M_PI / 4.) });
-	static inline CompMatr1 sxMat = getInlineCompMatr1({ {{0.5,0.5},{0.5,-0.5}}, {{0.5,-0.5},{0.5,0.5}} });
-	static inline CompMatr1 sxdgMat = getInlineCompMatr1({ {{0.5,-0.5},{0.5,0.5}}, {{0.5,0.5},{0.5,-0.5}} });
-	static inline CompMatr1 kMat = getInlineCompMatr1({ {{1. / sqrt(2.),0.},{0.,-1. / sqrt(2.)}}, {{0.,1. / sqrt(2.)},{-1. / sqrt(2.),0.}} });
+	// Lazy-initialized gate matrices — deferred to first use so they are
+	// constructed after initQuESTEnv() has been called (safe for GPU builds).
+	static const DiagMatr1& sdgMat() {
+		static DiagMatr1 m = getInlineDiagMatr1({ std::complex<FLOAT_TYPE>(1.,0.), std::complex<FLOAT_TYPE>(0., -1.)});
+		return m;
+	}
+	static const DiagMatr1& tdgMat() {
+		static DiagMatr1 m = getInlineDiagMatr1({ std::complex<FLOAT_TYPE>(1.,0.), std::polar<FLOAT_TYPE>(1., -M_PI / 4.) });
+		return m;
+	}
+	static const CompMatr1& sxMat() {
+		static CompMatr1 m = getInlineCompMatr1({ {{0.5,0.5},{0.5,-0.5}}, {{0.5,-0.5},{0.5,0.5}} });
+		return m;
+	}
+	static const CompMatr1& sxdgMat() {
+		static CompMatr1 m = getInlineCompMatr1({ {{0.5,-0.5},{0.5,0.5}}, {{0.5,0.5},{0.5,-0.5}} });
+		return m;
+	}
+	static const CompMatr1& kMat() {
+		static CompMatr1 m = getInlineCompMatr1({ {{1. / sqrt(2.),0.},{0.,-1. / sqrt(2.)}}, {{0.,1. / sqrt(2.)},{-1. / sqrt(2.),0.}} });
+		return m;
+	}
 };
 
 #endif // _MAESTROQUEST_H_

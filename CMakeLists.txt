@@ -5,7 +5,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# --- HPC options ---
+option(MAESTROQUEST_MPI "Build with MPI support for distributed simulation" OFF)
+option(MAESTROQUEST_GPU "Build with GPU acceleration" OFF)
+
 # --- Fetch and build the QuEST simulator from source ---
+# Forward HPC options to QuEST's build before fetching
+if(MAESTROQUEST_MPI)
+    set(MPI ON CACHE BOOL "Enable QuEST MPI support" FORCE)
+endif()
+if(MAESTROQUEST_GPU)
+    set(GPU ON CACHE BOOL "Enable QuEST GPU support" FORCE)
+endif()
+
 include(FetchContent)
 FetchContent_Declare(
     QuEST
@@ -31,6 +43,12 @@ target_include_directories(maestroquest PRIVATE ${quest_SOURCE_DIR} ${quest_SOUR
 
 target_link_libraries(maestroquest PRIVATE QuEST)
 
+if(MAESTROQUEST_MPI)
+    find_package(MPI REQUIRED)
+    target_compile_definitions(maestroquest PRIVATE MAESTROQUEST_MPI)
+    target_link_libraries(maestroquest PRIVATE MPI::MPI_CXX)
+endif()
+
 # --- tests executable ---
 add_executable(tests tests/tests.cpp)
 
@@ -54,8 +72,9 @@ if(MAESTRO_DIR)
         )
     endif()
 
+    file(GLOB _MAESTRO_BUILD_WHEEL_DIRS "${MAESTRO_DIR}/build/cp*")
     find_library(MAESTRO_LIB maestro PATHS ${MAESTRO_DIR}/build
-                 ${MAESTRO_DIR}/build/cp312-cp312-macosx_26_0_arm64
+                 ${_MAESTRO_BUILD_WHEEL_DIRS}
                  NO_DEFAULT_PATH)
     if(MAESTRO_LIB)
         target_link_libraries(quest_example PRIVATE ${MAESTRO_LIB})
