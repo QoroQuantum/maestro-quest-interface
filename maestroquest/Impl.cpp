@@ -1,6 +1,10 @@
 #include <atomic>
 #include <shared_mutex>
 
+#ifdef MAESTROQUEST_MPI
+#include <mpi.h>
+#endif
+
 #include "Interface.h"
 #include "MaestroQuest.h"
 
@@ -9,6 +13,7 @@
 static std::atomic_bool isInitialized{ false };
 static std::unique_ptr<MaestroQuest> maestroInstance;
 static std::shared_mutex g_instanceMutex;
+static bool weOwnQuESTEnv = false;
 
 #ifdef _WIN32
 __declspec(dllexport)
@@ -17,6 +22,16 @@ void Initialize()
 {
 	std::unique_lock<std::shared_mutex> lk(g_instanceMutex);
 	if (!isInitialized.exchange(true)) {
+#ifdef MAESTROQUEST_MPI
+		// Detect whether MPI is already initialized by the host application.
+		// If so, we must NOT call finalizeQuESTEnv() later, as that would
+		// tear down the host's MPI environment.
+		int mpiAlreadyInit = 0;
+		MPI_Initialized(&mpiAlreadyInit);
+		weOwnQuESTEnv = !mpiAlreadyInit;
+#else
+		weOwnQuESTEnv = true;
+#endif
 		initQuESTEnv();
 		maestroInstance = std::make_unique<MaestroQuest>();
 	}
@@ -31,7 +46,11 @@ void Finalize()
 	if (isInitialized.exchange(false)) {
 		maestroInstance->DestroyAll();
 		maestroInstance.reset();
-		finalizeQuESTEnv();
+		// Only tear down the QuEST/MPI environment if we were the ones
+		// who initialized it. Otherwise the host application owns MPI.
+		if (weOwnQuESTEnv) {
+			finalizeQuESTEnv();
+		}
 	}
 }
 
