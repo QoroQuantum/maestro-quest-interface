@@ -396,23 +396,23 @@ private:
 
 	// Lazy-initialized gate matrices — deferred to first use so they are
 	// constructed after initQuESTEnv() has been called (safe for GPU builds).
-	static DiagMatr1 sdgMat() {
+	static const DiagMatr1& sdgMat() {
 		static DiagMatr1 m = getInlineDiagMatr1({ std::complex<FLOAT_TYPE>(1.,0.), std::complex<FLOAT_TYPE>(0., -1.)});
 		return m;
 	}
-	static DiagMatr1 tdgMat() {
+	static const DiagMatr1& tdgMat() {
 		static DiagMatr1 m = getInlineDiagMatr1({ std::complex<FLOAT_TYPE>(1.,0.), std::polar<FLOAT_TYPE>(1., -M_PI / 4.) });
 		return m;
 	}
-	static CompMatr1 sxMat() {
+	static const CompMatr1& sxMat() {
 		static CompMatr1 m = getInlineCompMatr1({ {{0.5,0.5},{0.5,-0.5}}, {{0.5,-0.5},{0.5,0.5}} });
 		return m;
 	}
-	static CompMatr1 sxdgMat() {
+	static const CompMatr1& sxdgMat() {
 		static CompMatr1 m = getInlineCompMatr1({ {{0.5,-0.5},{0.5,0.5}}, {{0.5,0.5},{0.5,-0.5}} });
 		return m;
 	}
-	static CompMatr1 kMat() {
+	static const CompMatr1& kMat() {
 		static CompMatr1 m = getInlineCompMatr1({ {{1. / sqrt(2.),0.},{0.,-1. / sqrt(2.)}}, {{0.,1. / sqrt(2.)},{-1. / sqrt(2.),0.}} });
 		return m;
 	}

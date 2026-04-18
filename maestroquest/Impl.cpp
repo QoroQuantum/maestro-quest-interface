@@ -1,4 +1,5 @@
 #include <atomic>
+#include <mutex>
 #include <shared_mutex>
 
 #ifdef MAESTROQUEST_MPI
