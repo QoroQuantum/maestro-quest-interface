@@ -1,4 +1,5 @@
 #include <atomic>
+#include <shared_mutex>
 
 #include "Interface.h"
 #include "MaestroQuest.h"
@@ -7,12 +8,14 @@
 
 static std::atomic_bool isInitialized{ false };
 static std::unique_ptr<MaestroQuest> maestroInstance;
+static std::shared_mutex g_instanceMutex;
 
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
 void Initialize()
 {
+	std::unique_lock<std::shared_mutex> lk(g_instanceMutex);
 	if (!isInitialized.exchange(true)) {
 		initQuESTEnv();
 		maestroInstance = std::make_unique<MaestroQuest>();
@@ -24,9 +27,11 @@ __declspec(dllexport)
 #endif
 void Finalize()
 {
+	std::unique_lock<std::shared_mutex> lk(g_instanceMutex);
 	if (isInitialized.exchange(false)) {
-		finalizeQuESTEnv();
+		maestroInstance->DestroyAll();
 		maestroInstance.reset();
+		finalizeQuESTEnv();
 	}
 }
 
@@ -35,7 +40,8 @@ __declspec(dllexport)
 #endif
 unsigned long int CreateSimulator(int nrQubits)
 {
-	if (!isInitialized) return 0;
+	std::shared_lock<std::shared_mutex> lk(g_instanceMutex);
+	if (!isInitialized || !maestroInstance) return 0;
 
 	return maestroInstance->CreateSimulator(nrQubits);
 }
@@ -45,7 +51,8 @@ __declspec(dllexport)
 #endif
 void DestroySimulator(unsigned long int simHandle)
 {
-	if (!isInitialized) return;
+	std::shared_lock<std::shared_mutex> lk(g_instanceMutex);
+	if (!isInitialized || !maestroInstance) return;
 	maestroInstance->DestroySimulator(simHandle);
 }
 
@@ -54,7 +61,8 @@ __declspec(dllexport)
 #endif
 unsigned long int CloneSimulator(void* sim)
 {
-	if (!isInitialized) return 0;
+	std::shared_lock<std::shared_mutex> lk(g_instanceMutex);
+	if (!isInitialized || !maestroInstance) return 0;
 	return maestroInstance->CloneSimulator(sim);
 }
 
@@ -63,7 +71,8 @@ __declspec(dllexport)
 #endif
 void* GetSimulator(unsigned long int simHandle)
 {
-	if (!isInitialized) return nullptr;
+	std::shared_lock<std::shared_mutex> lk(g_instanceMutex);
+	if (!isInitialized || !maestroInstance) return nullptr;
 	return maestroInstance->GetSimulator(simHandle);
 }
 

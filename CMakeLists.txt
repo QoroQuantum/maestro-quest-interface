@@ -54,8 +54,9 @@ if(MAESTRO_DIR)
         )
     endif()
 
+    file(GLOB _MAESTRO_BUILD_WHEEL_DIRS "${MAESTRO_DIR}/build/cp*")
     find_library(MAESTRO_LIB maestro PATHS ${MAESTRO_DIR}/build
-                 ${MAESTRO_DIR}/build/cp312-cp312-macosx_26_0_arm64
+                 ${_MAESTRO_BUILD_WHEEL_DIRS}
                  NO_DEFAULT_PATH)
     if(MAESTRO_LIB)
         target_link_libraries(quest_example PRIVATE ${MAESTRO_LIB})

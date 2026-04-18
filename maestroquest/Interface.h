@@ -116,12 +116,12 @@ extern "C" {
 
 #ifdef _WIN32
 	__declspec(dllexport)
-		#endif
+#endif
 		void ApplyRy(void* sim, int qubit, double angle);
 
 #ifdef _WIN32
 	__declspec(dllexport)
-		#endif
+#endif
 		void ApplyRz(void* sim, int qubit, double angle);
 
 #ifdef _WIN32
